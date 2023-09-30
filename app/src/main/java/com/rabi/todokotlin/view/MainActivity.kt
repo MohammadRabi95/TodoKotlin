@@ -7,18 +7,25 @@ import android.view.Window
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.rabi.todokotlin.R
 import com.rabi.todokotlin.view.adapter.RvAdapter
 import com.rabi.todokotlin.model.data.Todo
 import com.rabi.todokotlin.databinding.ActivityMainBinding
+import com.rabi.todokotlin.db.MyDao
 import com.rabi.todokotlin.db.MyDatabase
+import com.rabi.todokotlin.viewmodel.MainViewModel
+import com.rabi.todokotlin.viewmodel.MainViewModelFactory
+import com.rabi.todokotlin.viewmodel.repo.MainRepository
 
 class MainActivity : AppCompatActivity(), UpdateListner {
 
     private lateinit var binding: ActivityMainBinding
-    private lateinit var list : List<Todo>
-    private lateinit var mDB : MyDatabase
+    private lateinit var mDao : MyDao
+    private lateinit var mainViewModel: MainViewModel
+    private lateinit var mRv: RecyclerView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,12 +33,17 @@ class MainActivity : AppCompatActivity(), UpdateListner {
         val view = binding.root
         setContentView(view)
 
-        mDB = MyDatabase.getDB(applicationContext)
+        mDao = MyDatabase.getDB(applicationContext).myDao()
+        val repo = MainRepository(mDao)
+        mainViewModel = ViewModelProvider(this,MainViewModelFactory(repo))[MainViewModel::class.java]
 
-        val mRv = binding.todoRv
+
+        mRv = binding.todoRv
         mRv.layoutManager = LinearLayoutManager(this)
-        list = mDB.myDao().getAll()
-        mRv.adapter = RvAdapter(list, this)
+        mainViewModel.getAll().observe(this) {
+            mRv.adapter = RvAdapter(it, this)
+        }
+
         binding.floatingActionButton.setOnClickListener {
             showDialog()
         }
@@ -48,10 +60,7 @@ class MainActivity : AppCompatActivity(), UpdateListner {
             if (todoEt.text.toString() != "") {
                 val todo = todoEt.text.toString()
                 val mt = Todo(0, todo, false)
-                mDB.myDao().insertTodo(mt)
-                list = emptyList()
-                list = mDB.myDao().getAll()
-                binding.todoRv.adapter = RvAdapter(list, this)
+                mainViewModel.insert(mt)
                 dialog.dismiss()
             } else {
                 Toast.makeText(this, "Empty Todo", Toast.LENGTH_SHORT).show()
@@ -64,6 +73,7 @@ class MainActivity : AppCompatActivity(), UpdateListner {
     }
 
     override fun updateTodo(todo: Todo) {
-        mDB.myDao().update(todo)
+        mainViewModel.update(todo )
     }
+
 }

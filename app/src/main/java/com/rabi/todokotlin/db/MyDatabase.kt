@@ -6,23 +6,24 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.rabi.todokotlin.model.data.Todo
 
-@Database(entities = [Todo::class], version = 2, exportSchema = false)
+@Database(entities = [Todo::class], version = 4, exportSchema = false)
 abstract class MyDatabase : RoomDatabase() {
 
-    abstract fun myDao() : MyDao
+    abstract fun myDao(): MyDao
 
     companion object {
         private var INSTANCE: MyDatabase? = null
 
-        fun getDB(context: Context) : MyDatabase {
-            if(INSTANCE == null)
-                INSTANCE = Room.databaseBuilder(context.applicationContext, MyDatabase::class.java,
-                    "todo_db")
-                    .allowMainThreadQueries()
-                    .fallbackToDestructiveMigration()
-                    .build()
+        fun getDB(context: Context): MyDatabase {
 
-            return INSTANCE!!
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext, MyDatabase::class.java, "todo_db"
+                ).fallbackToDestructiveMigration().build()
+
+                INSTANCE = instance
+                instance
             }
         }
     }
+}
